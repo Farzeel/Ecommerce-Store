@@ -1,0 +1,142 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+
+model User {
+  id         String     @id @default(uuid())
+  email      String     @unique
+  password   String
+  name       String
+  isAdmin    Boolean    @default(false)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  orders     Order[]
+  cartItems  CartItem[]
+  reviews    Review[]
+}
+model Verification {
+  id         String   @id @default(cuid())
+  name       String
+  email      String   @unique
+  password   String
+  token      String   @unique
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+}
+model PasswordReset {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  token     String   @unique
+  expiresAt DateTime
+}
+
+
+model Product {
+  id          String     @id @default(uuid())
+  name        String
+  description String
+  price       Float
+  discountedPrice       Float?
+  stock       Int
+  imageUrl    String
+  imagePublicId  String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  orderItems  OrderItem[]
+  reviews     Review[]
+  cartItems   CartItem[]  
+}
+
+model Order {
+  id          String      @id @default(uuid())
+  userId      String
+  totalAmount Float
+  amountPaid  Float
+  discount    Float
+  status      OrderStatus @default(PENDING)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  cancellationReason String?
+  cancelledAt      DateTime?
+  couponId    String?
+  coupon      Coupon?     @relation("CouponOrders", fields: [couponId], references: [id])
+
+  user        User        @relation(fields: [userId], references: [id])
+  items       OrderItem[]
+}
+
+model OrderItem {
+  id        String   @id @default(uuid())
+  orderId   String
+  productId String
+  quantity  Int
+  price     Float
+
+  order     Order    @relation(fields: [orderId], references: [id])
+  product   Product  @relation(fields: [productId], references: [id])
+}
+
+model CartItem {
+  id        String   @id @default(uuid())
+  userId    String
+  product   Product  @relation(fields: [productId], references: [id])
+  productId String
+  quantity  Int      @default(1)
+
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  userId    String
+  productId String
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id])
+  product   Product  @relation(fields: [productId], references: [id])
+}
+
+model Coupon {
+  id            String     @id @default(uuid())
+  code          String     @unique
+  discountType  DiscountType  @default(PERCENTAGE)
+  discountValue Float
+  usageLimit    Int?     // optional: how many times it can be used
+  usedCount     Int      @default(0)
+  expiresAt     DateTime
+  isActive      Boolean    @default(true)
+  minOrder    Float? 
+  orders        Order[]    @relation("CouponOrders")
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  
+}
